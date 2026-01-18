@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, MapPin, Users, Bell, User, ArrowLeft, Check, ShoppingBag, Shirt, ChevronRight, Star } from 'lucide-react';
 
 const KYDACommunityApp = () => {
@@ -34,15 +34,14 @@ const KYDACommunityApp = () => {
     name: '', email: '', password: '', confirmPassword: '', city: ''
   });
 
-  const kydaChapters = [
-    { id: 'DC', name: 'KYDA - DC', city: 'Washington DC', members: '2.1K', color: 'bg-blue-600', active: true, votes: 0 },
-    { id: 'NYC', name: 'KYDA - NYC', city: 'New York City', members: '3.5K', color: 'bg-purple-600', active: false, votes: 47 },
-    { id: 'MIAMI', name: 'KYDA - MIAMI', city: 'Miami', members: '1.8K', color: 'bg-pink-600', active: false, votes: 32 },
-    { id: 'ATLANTA', name: 'KYDA - ATL', city: 'Atlanta', members: '0', color: 'bg-red-600', active: false, votes: 28 },
-    { id: 'CHICAGO', name: 'KYDA - CHI', city: 'Chicago', members: '0', color: 'bg-orange-600', active: false, votes: 19 },
-    { id: 'NC', name: 'KYDA - NC', city: 'North Carolina', members: '1.2K', color: 'bg-green-600', active: false, votes: 15 }
-  ];
+const [kydaChapters, setKydaChapters] = useState([]);
 
+useEffect(() => {
+  fetch(`${process.env.REACT_APP_API_URL}/chapters`)
+    .then(res => res.json())
+    .then(data => setKydaChapters(data))
+    .catch(err => console.error('Error fetching chapters:', err));
+}, []);
   const events = [
     { id: 1, type: 'run', title: 'Saturday Morning Run Club', date: '2026-01-18', time: '8:00 AM',
       location: 'Lincoln Park, Washington DC', attendees: 24, capacity: 30, organizer: 'KYDA Run Crew',
