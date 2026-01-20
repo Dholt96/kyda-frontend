@@ -37,7 +37,7 @@ const KYDACommunityApp = () => {
 const [kydaChapters, setKydaChapters] = useState([]);
 
 useEffect(() => {
-  fetch(`${process.env.REACT_APP_API_URL}/chapters`)
+fetch(`${process.env.REACT_APP_API_URL}/chapters`)
     .then(res => res.json())
     .then(data => setKydaChapters(data))
     .catch(err => console.error('Error fetching chapters:', err));
