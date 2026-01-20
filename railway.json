@@ -3,6 +3,6 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npx serve -s build -l $PORT"
+    "startCommand": "npm start"
   }
 }
