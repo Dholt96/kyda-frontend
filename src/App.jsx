@@ -240,8 +240,10 @@ function SignupScreen({ onSignup, onGoLogin }) {
    PROPOSE MODAL
 ═══════════════════════════════════════════ */
 function ProposeModal({ onClose, onSubmit, loading }) {
-  const [form, setForm] = useState({ title: "", type: "run", location: "", description: "" });
+  const [form, setForm] = useState({ title: "", type: "run", location: "", description: "", contact_phone: "", contact_email: "" });
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const inputStyle = { width: "100%", border: "1.5px solid #E5E7EB", borderRadius: 10, padding: "11px 14px", fontSize: 14, outline: "none", color: "#111" };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
@@ -255,8 +257,7 @@ function ProposeModal({ onClose, onSubmit, loading }) {
         {[{ label: "Event Title", key: "title", placeholder: "e.g. Morning Run at the Mall" }, { label: "Location", key: "location", placeholder: "e.g. Lincoln Memorial, DC" }].map(({ label, key, placeholder }) => (
           <div key={key} style={{ marginBottom: 16 }}>
             <label style={{ color: "#374151", fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>{label}</label>
-            <input value={form[key]} onChange={set(key)} placeholder={placeholder}
-              style={{ width: "100%", border: "1.5px solid #E5E7EB", borderRadius: 10, padding: "11px 14px", fontSize: 14, outline: "none", color: "#111" }} />
+            <input value={form[key]} onChange={set(key)} placeholder={placeholder} style={inputStyle} />
           </div>
         ))}
         <div style={{ marginBottom: 16 }}>
@@ -270,10 +271,23 @@ function ProposeModal({ onClose, onSubmit, loading }) {
             ))}
           </div>
         </div>
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 16 }}>
           <label style={{ color: "#374151", fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Description</label>
           <textarea value={form.description} onChange={set("description")} placeholder="Describe the event..." rows={3}
-            style={{ width: "100%", border: "1.5px solid #E5E7EB", borderRadius: 10, padding: "11px 14px", fontSize: 14, outline: "none", color: "#111", resize: "none" }} />
+            style={{ ...inputStyle, resize: "none" }} />
+        </div>
+        <div style={{ background: "#F9FAFB", border: "1.5px solid #E5E7EB", borderRadius: 12, padding: "14px 16px", marginBottom: 24 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#6B7280", marginBottom: 12, letterSpacing: 0.5, textTransform: "uppercase" }}>Contact Info · Only visible to admins</div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ color: "#374151", fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Your Phone Number</label>
+            <input type="tel" value={form.contact_phone} onChange={set("contact_phone")} placeholder="e.g. (202) 555-0100"
+              style={{ ...inputStyle, background: "#fff" }} />
+          </div>
+          <div>
+            <label style={{ color: "#374151", fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Your Email</label>
+            <input type="email" value={form.contact_email} onChange={set("contact_email")} placeholder="you@example.com"
+              style={{ ...inputStyle, background: "#fff" }} />
+          </div>
         </div>
         <button onClick={() => onSubmit(form)} disabled={loading || !form.title || !form.location}
           style={{ width: "100%", background: loading || !form.title || !form.location ? "#9CA3AF" : "#111", color: "#fff", fontWeight: 700, fontSize: 15, padding: "13px 0", borderRadius: 12, border: "none", cursor: "pointer" }}>
@@ -610,6 +624,13 @@ function CommunityView({ user, selectedChapter = "DC" }) {
                       <span style={{ fontSize: 12, color: st.color, fontWeight: 600 }}>{st.label}</span>
                     </div>
                   </div>
+                  {isAdmin && (p.contact_phone || p.contact_email) && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #F3F4F6", background: "#FFFBEB", borderRadius: 10, padding: "10px 12px", marginTop: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#92400E", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Contact (admin only)</div>
+                      {p.contact_phone && <div style={{ fontSize: 13, color: "#374151", marginBottom: 3 }}>📞 {p.contact_phone}</div>}
+                      {p.contact_email && <div style={{ fontSize: 13, color: "#374151" }}>✉️ {p.contact_email}</div>}
+                    </div>
+                  )}
                   {isAdmin && isPending && (
                     <div style={{ display: "flex", gap: 8, marginTop: 12, paddingTop: 12, borderTop: "1px solid #F3F4F6" }}>
                       <button onClick={() => handleApprove(p.id)} disabled={actionLoading === p.id + "-approve"}
