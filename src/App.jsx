@@ -497,6 +497,12 @@ function HomeView({ user, chapters, onChapterVote, chapterVotes }) {
 /* ═══════════════════════════════════════════
    COMMUNITY VIEW
 ═══════════════════════════════════════════ */
+const STATUS_STYLE = {
+  pending:  { bg: "#D1FAE5", color: "#059669", dot: "#6EE7B7", label: "Open for votes" },
+  approved: { bg: "#DBEAFE", color: "#1D4ED8", dot: "#93C5FD", label: "Approved" },
+  rejected: { bg: "#FEE2E2", color: "#DC2626", dot: "#FCA5A5", label: "Rejected" },
+};
+
 function CommunityView({ user, selectedChapter = "DC" }) {
   const [proposals, setProposals] = useState([]);
   const [myVotes, setMyVotes] = useState(new Set());
@@ -504,6 +510,8 @@ function CommunityView({ user, selectedChapter = "DC" }) {
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [voteLoading, setVoteLoading] = useState(null);
+  const [actionLoading, setActionLoading] = useState(null);
+  const isAdmin = user?.is_admin;
 
   useEffect(() => {
     const load = async () => {
@@ -539,11 +547,27 @@ function CommunityView({ user, selectedChapter = "DC" }) {
     } catch { /* ignore */ } finally { setSubmitLoading(false); }
   };
 
+  const handleApprove = async (id) => {
+    setActionLoading(id + "-approve");
+    try {
+      await api.approveProposal(id);
+      setProposals(prev => prev.map(p => p.id === id ? { ...p, status: "approved" } : p));
+    } catch { /* ignore */ } finally { setActionLoading(null); }
+  };
+
+  const handleReject = async (id) => {
+    setActionLoading(id + "-reject");
+    try {
+      await api.rejectProposal(id);
+      setProposals(prev => prev.map(p => p.id === id ? { ...p, status: "rejected" } : p));
+    } catch { /* ignore */ } finally { setActionLoading(null); }
+  };
+
   return (
     <div style={{ paddingBottom: 80 }}>
       <div style={{ background: "#000", padding: "16px 20px 14px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>Community</div>
+          <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>Community {isAdmin && <span style={{ fontSize: 11, background: "#7C3AED", color: "#fff", borderRadius: 6, padding: "2px 7px", marginLeft: 6, fontWeight: 700 }}>ADMIN</span>}</div>
           <button onClick={() => setShowModal(true)}
             style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", border: "none", borderRadius: 20, padding: "8px 14px", cursor: "pointer" }}>
             <Plus size={15} color="#111" />
@@ -560,8 +584,11 @@ function CommunityView({ user, selectedChapter = "DC" }) {
             {proposals.length === 0 && <div style={{ textAlign: "center", color: "#9CA3AF", padding: "40px 0", fontSize: 14 }}>No proposals yet — be the first!</div>}
             {proposals.map(p => {
               const voted = myVotes.has(p.id);
+              const status = p.status || "pending";
+              const st = STATUS_STYLE[status] ?? STATUS_STYLE.pending;
+              const isPending = status === "pending";
               return (
-                <div key={p.id} style={{ background: "#fff", borderRadius: 16, padding: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <div key={p.id} style={{ background: "#fff", borderRadius: 16, padding: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", opacity: status === "rejected" ? 0.6 : 1 }}>
                   <div style={{ flex: 1, marginRight: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                       <TypeBadge type={p.type} />
@@ -572,17 +599,29 @@ function CommunityView({ user, selectedChapter = "DC" }) {
                     <div style={{ color: "#6B7280", fontSize: 13, lineHeight: 1.5 }}>{p.description}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, marginTop: 10, borderTop: "1px solid #F3F4F6" }}>
-                    <button onClick={() => handleVote(p.id)} disabled={voteLoading === p.id}
-                      style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", background: voted ? "#EDE9FE" : "#F3F4F6", border: "none", borderRadius: 10, cursor: "pointer" }}>
+                    <button onClick={() => handleVote(p.id)} disabled={voteLoading === p.id || !isPending}
+                      style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", background: voted ? "#EDE9FE" : "#F3F4F6", border: "none", borderRadius: 10, cursor: isPending ? "pointer" : "default", opacity: isPending ? 1 : 0.5 }}>
                       <ThumbsUp size={15} color={voted ? "#7C3AED" : "#374151"} fill={voted ? "#7C3AED" : "none"} />
                       <span style={{ fontWeight: 700, fontSize: 14, color: voted ? "#7C3AED" : "#374151" }}>{p.votes}</span>
                       <span style={{ fontSize: 13, color: voted ? "#7C3AED" : "#6B7280" }}>{voted ? "Voted" : "Vote"}</span>
                     </button>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#D1FAE5" }} />
-                      <span style={{ fontSize: 12, color: "#059669", fontWeight: 600 }}>Open for votes</span>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: st.dot }} />
+                      <span style={{ fontSize: 12, color: st.color, fontWeight: 600 }}>{st.label}</span>
                     </div>
                   </div>
+                  {isAdmin && isPending && (
+                    <div style={{ display: "flex", gap: 8, marginTop: 12, paddingTop: 12, borderTop: "1px solid #F3F4F6" }}>
+                      <button onClick={() => handleApprove(p.id)} disabled={actionLoading === p.id + "-approve"}
+                        style={{ flex: 1, background: "#D1FAE5", color: "#065F46", fontWeight: 700, fontSize: 13, padding: "9px 0", borderRadius: 10, border: "none", cursor: "pointer" }}>
+                        {actionLoading === p.id + "-approve" ? "Approving…" : "✓ Approve"}
+                      </button>
+                      <button onClick={() => handleReject(p.id)} disabled={actionLoading === p.id + "-reject"}
+                        style={{ flex: 1, background: "#FEE2E2", color: "#991B1B", fontWeight: 700, fontSize: 13, padding: "9px 0", borderRadius: 10, border: "none", cursor: "pointer" }}>
+                        {actionLoading === p.id + "-reject" ? "Rejecting…" : "✕ Reject"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}

@@ -48,6 +48,12 @@ export const api = {
     request("/api/proposals", { method: "POST", body: JSON.stringify(data) }),
   voteProposal: (id) => request(`/api/proposals/${id}/vote`, { method: "POST" }),
   myProposalVotes: () => request("/api/proposals/votes/mine"),
+
+  // Admin
+  approveProposal: (id, data = {}) =>
+    request(`/api/proposals/${id}/approve`, { method: "POST", body: JSON.stringify(data) }),
+  rejectProposal: (id) =>
+    request(`/api/proposals/${id}/reject`, { method: "POST" }),
 };
 
 export function saveToken(token) {
