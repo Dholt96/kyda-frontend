@@ -44,6 +44,16 @@ function Spinner() {
   );
 }
 
+function ComingSoon({ icon, title, body }) {
+  return (
+    <div style={{ textAlign: "center", padding: "48px 32px", maxWidth: 300, margin: "0 auto" }}>
+      <div style={{ fontSize: 52, marginBottom: 16 }}>{icon}</div>
+      <div style={{ fontWeight: 800, fontSize: 20, color: "#111", marginBottom: 10 }}>{title}</div>
+      <div style={{ color: "#9CA3AF", fontSize: 14, lineHeight: 1.6 }}>{body}</div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════
    LOGIN
 ═══════════════════════════════════════════ */
@@ -352,7 +362,7 @@ function HomeView({ user, chapters, onChapterVote, chapterVotes }) {
               {loadingEvents ? <Spinner /> : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {events.length === 0
-                    ? <div style={{ textAlign: "center", color: "#9CA3AF", padding: "32px 0", fontSize: 14 }}>No events yet for this chapter.</div>
+                    ? <ComingSoon icon="🏃" title="Events Coming Soon" body="We're finalizing the lineup for this chapter. Check back soon!" />
                     : events.map(e => <EventCard key={e.id} event={e} rsvped={myRsvps.has(e.id)} onRsvp={handleRsvp} loading={rsvpLoading === e.id} />)}
                 </div>
               )}
@@ -524,40 +534,13 @@ function CommunityView({ user, selectedChapter = "DC" }) {
    SHOP VIEW
 ═══════════════════════════════════════════ */
 function ShopView() {
-  const items = [
-    { id: 1, name: "KYDA Run Tee",  price: "$38", tag: "Bestseller", image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&q=80" },
-    { id: 2, name: "Community Cap", price: "$28", tag: "New",        image: "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400&q=80" },
-    { id: 3, name: "Zip Hoodie",    price: "$74", tag: null,         image: "https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=400&q=80" },
-    { id: 4, name: "Water Bottle",  price: "$22", tag: "New",        image: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&q=80" },
-  ];
   return (
     <div style={{ paddingBottom: 80 }}>
       <div style={{ background: "#000", padding: "16px 20px 14px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>Shop</div>
       </div>
-      <div style={{ background: "#F3F4F6", minHeight: "100vh", padding: 16 }}>
-        <div style={{ background: "linear-gradient(135deg,#111,#333)", borderRadius: 16, padding: 20, marginBottom: 20, color: "#fff" }}>
-          <div style={{ fontSize: 12, letterSpacing: 1, color: "#9CA3AF", marginBottom: 4, textTransform: "uppercase" }}>Member Exclusive</div>
-          <div style={{ fontWeight: 800, fontSize: 20 }}>KYDA Spring Drop</div>
-          <div style={{ color: "#D1D5DB", fontSize: 13, marginTop: 4 }}>Limited edition gear for DC chapter</div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          {items.map(item => (
-            <div key={item.id} style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-              <div style={{ position: "relative", height: 130 }}>
-                <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                {item.tag && <div style={{ position: "absolute", top: 8, left: 8, background: "#111", color: "#fff", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 20 }}>{item.tag}</div>}
-              </div>
-              <div style={{ padding: "10px 12px 12px" }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: "#111", marginBottom: 6 }}>{item.name}</div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 800, fontSize: 15, color: "#111" }}>{item.price}</span>
-                  <button style={{ background: "#111", color: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Add</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div style={{ background: "#F3F4F6", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <ComingSoon icon="👟" title="Shop Coming Soon" body="Member-exclusive KYDA gear is on the way. You'll be the first to know." />
       </div>
     </div>
   );
