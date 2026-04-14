@@ -520,23 +520,27 @@ const STATUS_STYLE = {
 function CommunityView({ user, selectedChapter = "DC" }) {
   const [proposals, setProposals] = useState([]);
   const [myVotes, setMyVotes] = useState(new Set());
+  const [myNotify, setMyNotify] = useState(new Set());
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [voteLoading, setVoteLoading] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
+  const [notifyLoading, setNotifyLoading] = useState(null);
   const isAdmin = user?.is_admin;
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const [props, votes] = await Promise.all([
+        const [props, votes, notify] = await Promise.all([
           api.getProposals(selectedChapter.toUpperCase()),
           api.myProposalVotes(),
+          api.myProposalNotify(),
         ]);
         setProposals(props);
         setMyVotes(new Set(votes));
+        setMyNotify(new Set(notify));
       } catch { /* ignore */ } finally { setLoading(false); }
     };
     load();
@@ -548,7 +552,20 @@ function CommunityView({ user, selectedChapter = "DC" }) {
       const { voted } = await api.voteProposal(id);
       setMyVotes(prev => { const s = new Set(prev); voted ? s.add(id) : s.delete(id); return s; });
       setProposals(prev => prev.map(p => p.id === id ? { ...p, votes: p.votes + (voted ? 1 : -1) } : p));
+      // If un-voting, also clear notify
+      if (!voted) {
+        setMyNotify(prev => { const s = new Set(prev); s.delete(id); return s; });
+      }
     } catch { /* ignore */ } finally { setVoteLoading(null); }
+  };
+
+  const handleNotifyToggle = async (id) => {
+    const current = myNotify.has(id);
+    setNotifyLoading(id);
+    try {
+      await api.toggleProposalNotify(id, !current);
+      setMyNotify(prev => { const s = new Set(prev); current ? s.delete(id) : s.add(id); return s; });
+    } catch { /* ignore */ } finally { setNotifyLoading(null); }
   };
 
   const handleSubmit = async (form) => {
@@ -619,9 +636,21 @@ function CommunityView({ user, selectedChapter = "DC" }) {
                       <span style={{ fontWeight: 700, fontSize: 14, color: voted ? "#7C3AED" : "#374151" }}>{p.votes}</span>
                       <span style={{ fontSize: 13, color: voted ? "#7C3AED" : "#6B7280" }}>{voted ? "Voted" : "Vote"}</span>
                     </button>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: st.dot }} />
-                      <span style={{ fontSize: 12, color: st.color, fontWeight: 600 }}>{st.label}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {voted && isPending && (
+                        <button onClick={() => handleNotifyToggle(p.id)} disabled={notifyLoading === p.id}
+                          title={myNotify.has(p.id) ? "Cancel approval alert" : "Alert me when approved + auto-RSVP"}
+                          style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 10px", background: myNotify.has(p.id) ? "#FEF3C7" : "#F3F4F6", border: "none", borderRadius: 10, cursor: "pointer" }}>
+                          <Bell size={14} color={myNotify.has(p.id) ? "#D97706" : "#9CA3AF"} fill={myNotify.has(p.id) ? "#D97706" : "none"} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: myNotify.has(p.id) ? "#D97706" : "#9CA3AF" }}>
+                            {myNotify.has(p.id) ? "Notifying" : "Notify me"}
+                          </span>
+                        </button>
+                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: st.dot }} />
+                        <span style={{ fontSize: 12, color: st.color, fontWeight: 600 }}>{st.label}</span>
+                      </div>
                     </div>
                   </div>
                   {isAdmin && (p.contact_phone || p.contact_email) && (
@@ -673,35 +702,59 @@ function ShopView() {
 /* ═══════════════════════════════════════════
    ALERTS VIEW
 ═══════════════════════════════════════════ */
-function AlertsView() {
-  const alerts = [
-    { id: 1, icon: "🏃", title: "RSVP Reminder",    body: "Morning Run is in 2 days — you're in!",  time: "2h ago",  unread: true  },
-    { id: 2, icon: "🗳️", title: "New Chapter Vote",  body: "NYC is 3 votes away from launching!",    time: "5h ago",  unread: true  },
-    { id: 3, icon: "📣", title: "New Event Posted",  body: "Cherry Blossom Walk added for Apr 26.",  time: "1d ago",  unread: false },
-    { id: 4, icon: "💬", title: "Proposal Approved", body: "Rooftop Sunset Run has 34 votes!",       time: "2d ago",  unread: false },
-    { id: 5, icon: "👥", title: "Chapter Update",    body: "DC now has 2,100+ active members.",      time: "3d ago",  unread: false },
-  ];
+function timeAgo(ts) {
+  const diff = (Date.now() - new Date(ts)) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function AlertsView({ onRead }) {
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const data = await api.getNotifications();
+        setAlerts(data);
+        const unread = data.filter(a => !a.read).length;
+        if (unread > 0) {
+          await api.markNotificationsRead();
+          onRead && onRead();
+        }
+      } catch { /* ignore */ } finally { setLoading(false); }
+    };
+    load();
+  }, []);
+
   return (
     <div style={{ paddingBottom: 80 }}>
       <div style={{ background: "#000", padding: "16px 20px 14px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>Alerts</div>
       </div>
       <div style={{ background: "#F3F4F6", minHeight: "100vh", padding: 16 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {alerts.map(a => (
-            <div key={a.id} style={{ background: "#fff", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", borderLeft: a.unread ? "3px solid #7C3AED" : "3px solid transparent" }}>
-              <div style={{ fontSize: 22, lineHeight: 1, marginTop: 2 }}>{a.icon}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>{a.title}</div>
-                  <div style={{ fontSize: 11, color: "#9CA3AF", marginLeft: 8, flexShrink: 0 }}>{a.time}</div>
+        {loading ? <Spinner /> : alerts.length === 0 ? (
+          <div style={{ textAlign: "center", color: "#9CA3AF", padding: "48px 0", fontSize: 14 }}>No alerts yet</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {alerts.map(a => (
+              <div key={a.id} style={{ background: "#fff", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", borderLeft: !a.read ? "3px solid #7C3AED" : "3px solid transparent" }}>
+                <div style={{ fontSize: 22, lineHeight: 1, marginTop: 2 }}>{a.icon || "🔔"}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>{a.title}</div>
+                    <div style={{ fontSize: 11, color: "#9CA3AF", marginLeft: 8, flexShrink: 0 }}>{timeAgo(a.created_at)}</div>
+                  </div>
+                  <div style={{ color: "#6B7280", fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>{a.body}</div>
                 </div>
-                <div style={{ color: "#6B7280", fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>{a.body}</div>
+                {!a.read && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#7C3AED", flexShrink: 0, marginTop: 6 }} />}
               </div>
-              {a.unread && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#7C3AED", flexShrink: 0, marginTop: 6 }} />}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -818,12 +871,12 @@ function ProfileView({ user, setUser, onLogout }) {
 /* ═══════════════════════════════════════════
    BOTTOM NAV
 ═══════════════════════════════════════════ */
-function BottomNav({ active, setActive }) {
+function BottomNav({ active, setActive, unreadCount = 0 }) {
   const tabs = [
     { id: "events",    label: "Events",    Icon: Home },
     { id: "community", label: "Community", Icon: Users },
     { id: "shop",      label: "Shop",      Icon: ShoppingBag },
-    { id: "alerts",    label: "Alerts",    Icon: Bell, badge: 2 },
+    { id: "alerts",    label: "Alerts",    Icon: Bell, badge: unreadCount },
     { id: "profile",   label: "Profile",   Icon: User },
   ];
   return (
@@ -854,16 +907,20 @@ export default function KYDACommunityApp() {
   const [activeTab, setActiveTab] = useState("events");
   const [chapters, setChapters]   = useState([]);
   const [chapterVotes, setChapterVotes] = useState(new Set());
+  const [unreadCount, setUnreadCount]   = useState(0);
 
   useEffect(() => {
     const init = async () => {
       const token = localStorage.getItem("kyda_token");
       if (token) {
         try {
-          const [me, chaps, myVotes] = await Promise.all([api.me(), api.getChapters(), api.myChapterVotes()]);
+          const [me, chaps, myVotes, notifs] = await Promise.all([
+            api.me(), api.getChapters(), api.myChapterVotes(), api.getNotifications(),
+          ]);
           setUser(me);
           setChapters(chaps);
           setChapterVotes(new Set(myVotes));
+          setUnreadCount(notifs.filter(n => !n.read).length);
           setScreen("app");
           return;
         } catch { clearToken(); }
@@ -916,9 +973,9 @@ export default function KYDACommunityApp() {
       {activeTab === "events"    && <HomeView      user={user} chapters={chapters} onChapterVote={handleChapterVote} chapterVotes={chapterVotes} />}
       {activeTab === "community" && <CommunityView user={user} selectedChapter={user?.chapter ?? "DC"} />}
       {activeTab === "shop"      && <ShopView />}
-      {activeTab === "alerts"    && <AlertsView />}
+      {activeTab === "alerts"    && <AlertsView onRead={() => setUnreadCount(0)} />}
       {activeTab === "profile"   && <ProfileView  user={user} setUser={setUser} onLogout={handleLogout} />}
-      <BottomNav active={activeTab} setActive={setActiveTab} />
+      <BottomNav active={activeTab} setActive={setActiveTab} unreadCount={unreadCount} />
     </div>
   );
 }

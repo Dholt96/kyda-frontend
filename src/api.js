@@ -54,6 +54,13 @@ export const api = {
     request(`/api/proposals/${id}/approve`, { method: "POST", body: JSON.stringify(data) }),
   rejectProposal: (id) =>
     request(`/api/proposals/${id}/reject`, { method: "POST" }),
+
+  // Notifications
+  toggleProposalNotify: (id, notify) =>
+    request(`/api/proposals/${id}/notify`, { method: "POST", body: JSON.stringify({ notify }) }),
+  myProposalNotify: () => request("/api/proposals/notify/mine"),
+  getNotifications: () => request("/api/notifications"),
+  markNotificationsRead: () => request("/api/notifications/read", { method: "POST" }),
 };
 
 export function saveToken(token) {
