@@ -115,7 +115,7 @@ function LoginScreen({ onLogin, onGoSignup }) {
 /* ═══════════════════════════════════════════
    SIGNUP
 ═══════════════════════════════════════════ */
-const KYDA_CITIES = ["DC", "NYC", "Miami", "Atlanta", "Chicago", "NC"];
+const KYDA_CITIES = ["DC", "NYC", "Miami", "Atlanta", "Chicago", "Raleigh"];
 
 function CityPicker({ selected, onChange }) {
   const [open, setOpen] = useState(false);
